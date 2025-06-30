@@ -9,7 +9,7 @@ export default {
       colors: {
         'primary-green': '#16a34a',
         'secondary-green': '#22c55e',
-        'light-green-bg': '#dcfce7', // Um verde bem claro para o fundo
+        'light-green-bg': '#dcfce7',
         'dark-text': '#1e293b',
         'light-text': '#64748b',
       }
