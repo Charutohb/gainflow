@@ -27,7 +27,6 @@ const GerenciadorFranquias = () => {
     }
     setIsSubmitting(true);
     setFeedback(`Criando a franquia "${nomeFranquia}"...`);
-
     try {
       await addDoc(collection(db, 'franquias'), {
         nome: nomeFranquia,
@@ -42,7 +41,7 @@ const GerenciadorFranquias = () => {
       setTimeout(() => setFeedback(''), 4000);
     } catch (error) {
       console.error("Erro ao criar franquia: ", error);
-      setFeedback('Erro ao criar franquia. Tente novamente.');
+      setFeedback('Erro ao criar franquia.');
     } finally {
       setIsSubmitting(false);
     }
@@ -69,7 +68,7 @@ const GerenciadorFranquias = () => {
               disabled={isSubmitting}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-r-md text-white bg-primary-green hover:bg-secondary-green focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-green disabled:bg-slate-400"
             >
-              {isSubmitting ? 'Criando...' : 'Criar'}
+              {isSubmitting ? 'Criando...' : 'Criar Franquia'}
             </button>
           </div>
           {feedback && <p className="mt-2 text-sm text-gray-600">{feedback}</p>}
