@@ -1,23 +1,24 @@
 import React from 'react';
 import { useAuth } from './context/AuthContext';
-import LoginScreen from './screens/LoginScreen.jsx';
-import MainLayout from './layouts/MainLayout.jsx';
-import PainelSuperAdmin from './screens/PainelSuperAdmin.jsx';
-import DashboardFranqueado from './screens/DashboardFranqueado.jsx';
-import DashboardAgente from './screens/DashboardAgente.jsx';
+import LoginScreen from './screens/LoginScreen'; // Precisaremos criar esta tela
+import MainLayout from './layouts/MainLayout'; // E esta
+import DashboardAgente from './screens/DashboardAgente';
+import DashboardFranqueado from './screens/DashboardFranqueado';
+import PainelSuperAdmin from './screens/PainelSuperAdmin';
 
 function App() {
   const { currentUser } = useAuth();
+
   const renderDashboard = () => {
-    if (!currentUser || !currentUser.perfil) {
-      return <div className="flex items-center justify-center h-screen"><p>Carregando perfil...</p></div>;
+    if (!currentUser?.perfil) {
+      return <div className="p-8">Carregando perfil ou perfil não encontrado...</div>
     }
     let dashboardComponent;
     switch (currentUser.perfil) {
       case 'superadmin': dashboardComponent = <PainelSuperAdmin />; break;
       case 'franqueado': dashboardComponent = <DashboardFranqueado />; break;
       case 'agente': dashboardComponent = <DashboardAgente />; break;
-      default: dashboardComponent = <p>Perfil de usuário desconhecido.</p>;
+      default: dashboardComponent = <p>Perfil desconhecido.</p>;
     }
     return <MainLayout>{dashboardComponent}</MainLayout>;
   };

@@ -1,19 +1,14 @@
-// src/context/AuthContext.jsx
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase/config';
+import { auth, db } from '../firebase/config'; // Assumindo que firebase/config.js será criado
 
-// Cria o Contexto
 const AuthContext = createContext();
 
-// Cria um "hook" personalizado para facilitar o uso do contexto
 export function useAuth() {
   return useContext(AuthContext);
 }
 
-// Cria o Provedor, que é o componente que vai gerenciar o estado
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,30 +19,19 @@ export function AuthProvider({ children }) {
         const userDocRef = doc(db, 'usuarios', user.uid);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
-          setCurrentUser({
-            uid: user.uid,
-            email: user.email,
-            ...userDocSnap.data(),
-          });
+          setCurrentUser({ uid: user.uid, email: user.email, ...userDocSnap.data() });
         } else {
-          setCurrentUser(null);
+          setCurrentUser(user); // Usuário existe no Auth mas não no Firestore
         }
       } else {
         setCurrentUser(null);
       }
       setLoading(false);
     });
-
     return unsubscribe;
   }, []);
 
-  const value = {
-    currentUser,
-  };
+  const value = { currentUser };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }
