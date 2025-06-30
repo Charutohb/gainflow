@@ -9,7 +9,6 @@ const GerenciadorFranquias = () => {
   const [feedback, setFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Efeito para buscar e ouvir as franquias em tempo real
   useEffect(() => {
     const q = query(collection(db, 'franquias'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -17,11 +16,9 @@ const GerenciadorFranquias = () => {
       setFranquias(listaFranquias);
       setLoading(false);
     });
-    // Limpa o "ouvinte" quando o componente é desmontado para evitar vazamento de memória
     return () => unsubscribe();
   }, []);
 
-  // Função para lidar com o envio do formulário
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nomeFranquia.trim()) {
@@ -32,11 +29,9 @@ const GerenciadorFranquias = () => {
     setFeedback(`Criando a franquia "${nomeFranquia}"...`);
 
     try {
-      // Adiciona um novo documento na coleção 'franquias'
       await addDoc(collection(db, 'franquias'), {
         nome: nomeFranquia,
         createdAt: serverTimestamp(),
-        // Adicionamos as metas já zeradas para o franqueado poder editar depois
         metaAtivos: 10,
         metaMigracao: 0.8,
         metaTpvTransacionado: 100000,
@@ -55,39 +50,46 @@ const GerenciadorFranquias = () => {
 
   return (
     <div>
-      <div style={{ border: '1px solid #ccc', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem' }}>
-        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0 0 1rem 0' }}>Criar Nova Franquia</h3>
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h3 className="text-xl font-bold text-dark-text mb-4">Criar Nova Franquia</h3>
         <form onSubmit={handleSubmit}>
-          <label style={{display: 'block', marginBottom: '0.5rem'}}>Nome da Franquia:</label>
-          <input
-            type="text"
-            value={nomeFranquia}
-            onChange={(e) => setNomeFranquia(e.target.value)}
-            placeholder="Ex: Stone Campinas"
-            required
-            style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '1rem' }}
-          />
-          <button type="submit" disabled={isSubmitting} style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            {isSubmitting ? 'Criando...' : 'Criar Franquia'}
-          </button>
-          {feedback && <p style={{ marginTop: '1rem' }}>{feedback}</p>}
+          <label htmlFor="franchise-name" className="block text-sm font-medium text-slate-700">Nome da Franquia</label>
+          <div className="mt-1 flex rounded-md shadow-sm">
+            <input
+              type="text"
+              id="franchise-name"
+              value={nomeFranquia}
+              onChange={(e) => setNomeFranquia(e.target.value)}
+              placeholder="Ex: Stone Campinas"
+              required
+              className="flex-1 block w-full rounded-none rounded-l-md border-slate-300 focus:ring-primary-green focus:border-primary-green sm:text-sm px-3 py-2"
+            />
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-r-md text-white bg-primary-green hover:bg-secondary-green focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-green disabled:bg-slate-400"
+            >
+              {isSubmitting ? 'Criando...' : 'Criar'}
+            </button>
+          </div>
+          {feedback && <p className="mt-2 text-sm text-gray-600">{feedback}</p>}
         </form>
       </div>
 
-      <div>
-        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '2rem 0 1rem 0' }}>Franquias Existentes</h3>
-        {loading ? <p>Carregando franquias...</p> : (
-          franquias.length > 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {franquias.map(franquia => (
-                <li key={franquia.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '1px solid #eee', borderRadius: '4px', marginBottom: '0.5rem' }}>
-                  <span>{franquia.nome}</span>
-                  <span style={{fontSize: '0.8rem', color: '#666'}}>ID: {franquia.id}</span>
+      <div className="mt-8">
+        <h3 className="text-xl font-bold text-dark-text mb-4">Franquias Existentes</h3>
+        <div className="bg-white shadow-md rounded-lg overflow-hidden">
+          <ul className="divide-y divide-slate-200">
+            {loading ? <li className="p-4">Carregando...</li> : (
+              franquias.map(franquia => (
+                <li key={franquia.id} className="p-4 flex justify-between items-center">
+                  <span className="font-medium text-slate-900">{franquia.nome}</span>
+                  <span className="text-xs text-light-text bg-slate-100 px-2 py-1 rounded-full">ID: {franquia.id}</span>
                 </li>
-              ))}
-            </ul>
-          ) : <p>Nenhuma franquia cadastrada ainda.</p>
-        )}
+              ))
+            )}
+          </ul>
+        </div>
       </div>
     </div>
   );
