@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, query, where, getDocs, doc, updateDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,7 +21,6 @@ const AcompanhamentoClientes = () => {
         
         const hoje = new Date();
 
-        // 1. Busca Clientes pendentes de ativação (de qualquer período)
         const paraAtivarQuery = query(
             collection(db, "Clientes"),
             where("agenteId", "==", currentUser.uid),
@@ -30,7 +29,6 @@ const AcompanhamentoClientes = () => {
         const paraAtivarSnapshot = await getDocs(paraAtivarQuery);
         setClientesParaAtivar(paraAtivarSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
-        // 2. Busca Clientes ATIVADOS na Safra do Mês Anterior para Acompanhamento em M1
         const inicioMesAnterior = Timestamp.fromDate(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
         const fimMesAnterior = Timestamp.fromDate(new Date(hoje.getFullYear(), hoje.getMonth(), 0, 23, 59, 59));
         
@@ -58,9 +56,26 @@ const AcompanhamentoClientes = () => {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    const handleAtivarCliente = async (clienteId) => {
-        const clienteRef = doc(db, 'Clientes', clienteId);
-        await updateDoc(clienteRef, { isAtivo: true, dataAtivacao: serverTimestamp() });
+    const handleAtivarCliente = async (cliente) => {
+        const clienteRef = doc(db, 'Clientes', cliente.id);
+        const dataDeAtivacao = cliente.dataCredenciamento; // <-- USA A DATA DO CREDENCIAMENTO
+
+        // 1. Atualiza o status do cliente
+        await updateDoc(clienteRef, { 
+            isAtivo: true, 
+            dataAtivacao: dataDeAtivacao 
+        });
+
+        // 2. Cria o registro de atividade para contar na meta
+        await addDoc(collection(db, "atividades"), {
+            agenteId: currentUser.uid,
+            franquiaId: currentUser.franquiaId,
+            tipo: 'Ativação de Conta',
+            valor: 1,
+            data: dataDeAtivacao, // <-- USA A MESMA DATA RETROATIVA
+        });
+
+        alert('Cliente ativado com sucesso!');
         fetchData(); 
     };
 
@@ -86,7 +101,6 @@ const AcompanhamentoClientes = () => {
 
     return (
         <div className="space-y-8">
-            {/* Seção 1: M0 */}
             <div>
                 <h3 className="text-xl font-bold text-gray-800 mb-4">Acompanhamento M0 (Clientes do Mês Atual)</h3>
                 <div className="bg-white p-4 rounded-lg shadow-md space-y-3">
@@ -94,15 +108,14 @@ const AcompanhamentoClientes = () => {
                         <div key={cliente.id} className="flex justify-between items-center p-3 border-b last:border-b-0">
                             <div>
                                 <p className="font-semibold text-gray-900">{cliente.nomeCliente}</p>
-                                {cliente.createdAt && <p className="text-xs text-gray-500">Credenciado em: {cliente.createdAt.toDate().toLocaleDateString('pt-BR')}</p>}
+                                {cliente.dataCredenciamento && <p className="text-xs text-gray-500">Credenciado em: {cliente.dataCredenciamento.toDate().toLocaleDateString('pt-BR')}</p>}
                             </div>
-                            <button onClick={() => handleAtivarCliente(cliente.id)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm transition-colors">Marcar como Ativo</button>
+                            <button onClick={() => handleAtivarCliente(cliente)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm transition-colors">Marcar como Ativo</button>
                         </div>
                     )) : <p className="text-gray-500 italic text-center py-4">Nenhum cliente pendente de ativação.</p>}
                 </div>
             </div>
 
-            {/* Seção 2: M1 */}
             <div>
                 <h3 className="text-xl font-bold text-gray-800 mb-4">Acompanhamento M1 (Clientes da Safra Anterior)</h3>
                 <div className="bg-white p-4 rounded-lg shadow-md space-y-3">
