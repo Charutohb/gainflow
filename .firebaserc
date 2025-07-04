@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "gainflow-v2"
-  }
+    "default": "gainflow-v2",
+    "teste": "gainflow-teste-debug"
+  },
+  "targets": {},
+  "etags": {}
 }

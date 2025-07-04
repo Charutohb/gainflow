@@ -2,102 +2,92 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 
-admin.initializeApp();
+// Define a região e outras opções globais
 setGlobalOptions({ region: "southamerica-east1" });
 
-// --- Função para Adicionar Agente ---
-exports.addAgentToFranchise = onCall(async (request) => {
-  if (!request.auth) { throw new HttpsError("unauthenticated", "Você precisa estar autenticado para realizar esta ação."); }
-  const franchiseeId = request.auth.uid;
-  const agentEmail = request.data.email;
-  if (!agentEmail) { throw new HttpsError("invalid-argument", "O e-mail do agente é obrigatório."); }
+// Inicializa o Firebase Admin
+admin.initializeApp();
+
+// --- FUNÇÃO PARA CRIAR AGENTES (JÁ EXISTENTE) ---
+exports.criarNovoAgente = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Você precisa estar autenticado.");
+  }
+
+  const { nome, email, senha, dataContratacao, planoCarreiraId } = request.data;
+  const franqueadoUid = request.auth.uid;
+
+  if (!dataContratacao || !planoCarreiraId || !nome || !email || !senha) {
+    throw new HttpsError("invalid-argument", "Todos os campos (nome, email, senha, data e plano) são obrigatórios.");
+  }
+
   try {
-    const franchiseeRef = admin.firestore().collection("usuarios").doc(franchiseeId);
-    const franchiseeDoc = await franchiseeRef.get();
-    if (!franchiseeDoc.exists || franchiseeDoc.data().perfil !== "franqueado") { throw new HttpsError("permission-denied", "Você não tem permissão para adicionar agentes."); }
-    const franquiaId = franchiseeDoc.data().franquiaId;
-    const agentUserRecord = await admin.auth().getUserByEmail(agentEmail);
-    const agentId = agentUserRecord.uid;
-    const agentName = agentUserRecord.displayName || agentEmail.split('@')[0];
-    const agentRef = admin.firestore().collection("usuarios").doc(agentId);
-    await agentRef.set({
+    const franqueadoDoc = await admin.firestore().collection("usuarios").doc(franqueadoUid).get();
+    if (!franqueadoDoc.exists || franqueadoDoc.data().perfil !== "franqueado") {
+      throw new HttpsError("permission-denied", "Você não tem permissão para criar agentes.");
+    }
+    
+    const franquiaId = franqueadoDoc.data().franquiaId;
+    if (!franquiaId) {
+        throw new HttpsError("failed-precondition", "O franqueado não está associado a uma franquia.");
+    }
+
+    const userRecord = await admin.auth().createUser({ email: email, password: senha, displayName: nome });
+
+    await admin.firestore().collection("usuarios").doc(userRecord.uid).set({
+      nome: nome,
+      email: email,
       perfil: "agente",
+      status: "ativo",
       franquiaId: franquiaId,
-      nome: agentName,
-      email: agentEmail,
-    }, { merge: true });
-    return { status: "success", message: `O usuário ${agentEmail} foi adicionado como agente com sucesso!` };
+      planoCarreiraId: planoCarreiraId,
+      dataContratacao: admin.firestore.Timestamp.fromDate(new Date(dataContratacao)),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, message: `Agente ${nome} criado com sucesso!` };
   } catch (error) {
-    console.error("Erro ao adicionar agente:", error);
-    if (error.code === "auth/user-not-found") { throw new HttpsError("not-found", "Nenhum usuário encontrado com este e-mail."); }
-    throw new HttpsError("internal", "Ocorreu um erro interno. Tente novamente.");
+    console.error("ERRO INTERNO NA FUNÇÃO:", error);
+    throw new HttpsError("internal", `Erro no servidor: ${error.message}`);
   }
 });
 
-// --- Função para Remover Agente ---
-exports.removeAgentFromFranchise = onCall(async (request) => {
-  if (!request.auth) { throw new HttpsError("unauthenticated", "Você precisa estar autenticado para realizar esta ação."); }
-  const franchiseeId = request.auth.uid;
-  const agentIdToRemove = request.data.agentId;
-  if (!agentIdToRemove) { throw new HttpsError("invalid-argument", "O ID do agente é obrigatório."); }
+
+// --- NOVA FUNÇÃO PARA CRIAR FRANQUEADOS ---
+exports.criarNovoFranqueado = onCall(async (request) => {
+  // Apenas um superadmin pode criar um franqueado
+  const superAdminUid = request.auth.uid;
+  const superAdminDoc = await admin.firestore().collection("usuarios").doc(superAdminUid).get();
+  if (!superAdminDoc.exists || superAdminDoc.data().perfil !== "superadmin") {
+    throw new HttpsError("permission-denied", "Você não tem permissão para esta operação.");
+  }
+
+  const { nome, email, senha, franquiaId } = request.data;
+  if (!nome || !email || !senha || !franquiaId) {
+    throw new HttpsError("invalid-argument", "Todos os campos são obrigatórios.");
+  }
+
   try {
-    const franchiseeRef = admin.firestore().collection("usuarios").doc(franchiseeId);
-    const franchiseeDoc = await franchiseeRef.get();
-    if (!franchiseeDoc.exists || franchiseeDoc.data().perfil !== "franqueado") { throw new HttpsError("permission-denied", "Você não tem permissão para remover agentes."); }
-    const agentRef = admin.firestore().collection("usuarios").doc(agentIdToRemove);
-    await agentRef.update({ perfil: "sem_franquia", franquiaId: null });
-    return { status: "success", message: "O agente foi removido da sua equipe com sucesso." };
+    // Cria o usuário na Autenticação
+    const userRecord = await admin.auth().createUser({
+      email: email,
+      password: senha,
+      displayName: nome,
+    });
+
+    // Cria o documento no Firestore
+    await admin.firestore().collection("usuarios").doc(userRecord.uid).set({
+      nome: nome,
+      email: email,
+      perfil: "franqueado", // Define o perfil correto
+      status: "ativo",
+      franquiaId: franquiaId, // Associa à franquia selecionada
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, message: `Franqueado ${nome} criado com sucesso!` };
   } catch (error) {
-    console.error("Erro ao remover agente:", error);
-    throw new HttpsError("internal", "Ocorreu um erro interno ao remover o agente.");
+    console.error("ERRO AO CRIAR FRANQUEADO:", error);
+    throw new HttpsError("internal", `Erro no servidor: ${error.message}`);
   }
 });
-
-// --- NOVA Função para Criar Franqueado ---
-exports.createFranchisee = onCall(async (request) => {
-    // Verificação de Segurança do chamador
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "Você precisa estar autenticado.");
-    }
-
-    const superAdminId = request.auth.uid;
-    const superAdminRef = admin.firestore().collection("usuarios").doc(superAdminId);
-    const superAdminDoc = await superAdminRef.get();
-
-    if (!superAdminDoc.exists || superAdminDoc.data().perfil !== "superadmin") {
-      throw new HttpsError("permission-denied", "Apenas Super Admins podem criar franqueados.");
-    }
-
-    // Validação dos dados recebidos
-    const { email, senha, nome, franquiaId } = request.data;
-    if (!email || !senha || !nome || !franquiaId) {
-      throw new HttpsError("invalid-argument", "Todos os campos são obrigatórios.");
-    }
-
-    try {
-      // Criar o usuário no Firebase Authentication
-      const userRecord = await admin.auth().createUser({
-        email: email,
-        password: senha,
-        displayName: nome,
-      });
-
-      // Criar o documento do usuário no Firestore
-      const newUserRef = admin.firestore().collection("usuarios").doc(userRecord.uid);
-      await newUserRef.set({
-        nome: nome,
-        email: email,
-        perfil: "franqueado",
-        franquiaId: franquiaId,
-      });
-
-      return { status: "success", message: `Franqueado ${nome} criado com sucesso!` };
-
-    } catch (error) {
-      console.error("Erro ao criar franqueado:", error);
-      if (error.code === 'auth/email-already-exists') {
-          throw new HttpsError('already-exists', 'Este e-mail já está em uso por outra conta.');
-      }
-      throw new HttpsError("internal", "Ocorreu um erro interno ao criar o franqueado.");
-    }
-  });

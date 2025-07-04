@@ -1,10 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore"; // <-- ADICIONE ESTA LINHA
 
-// COLE SUAS CHAVES DO FIREBASE V2 AQUI
+// Suas chaves de configuração do Firebase ficam aqui
 const firebaseConfig = {
-    apiKey: "AIzaSyBWaylbmA6nnAMjTVBvLr9KvrFwlFJwQbM",
+  apiKey: "AIzaSyBWaylbmA6nnAMjTVBvLr9KvrFwlFJwQbM",
   authDomain: "gainflow-v2.firebaseapp.com",
   projectId: "gainflow-v2",
   storageBucket: "gainflow-v2.firebasestorage.app",
@@ -14,6 +14,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = getFirestore(app); // <-- ADICIONE ESTA LINHA
 
-export { app, auth, db };
+export { auth, db }; // <-- ADICIONE 'db' AQUI

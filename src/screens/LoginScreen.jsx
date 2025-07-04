@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from '../firebase/config';
-import { FaUserAlt, FaLock } from 'react-icons/fa'; // Importando os ícones
+import { FaUserAlt, FaLock } from 'react-icons/fa';
 
-// Componente do Logo para ser reutilizado
-export const AppLogo = () => (
-  <h1 className="text-4xl md:text-5xl font-black text-center text-dark-text tracking-wide">
+export const AppLogo = ({ isLogin = false }) => (
+  <h1 className={`${isLogin ? 'text-4xl md:text-5xl' : 'text-2xl'} font-black text-center text-dark-text tracking-wide`}>
     GainFlo<span className="text-primary-green">W</span>
   </h1>
 );
@@ -31,12 +30,9 @@ const LoginScreen = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-light-green-bg p-4">
-      {/* Cartão com efeito de vidro fosco */}
       <div className="w-full max-w-sm p-8 space-y-8 bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl">
-        <AppLogo />
+        <AppLogo isLogin={true} />
         <form onSubmit={handleLogin} className="space-y-6">
-          
-          {/* Campo de E-mail com Ícone */}
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <FaUserAlt className="text-light-text" />
@@ -51,8 +47,6 @@ const LoginScreen = () => {
               placeholder="E-mail"
             />
           </div>
-
-          {/* Campo de Senha com Ícone */}
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <FaLock className="text-light-text" />
@@ -67,10 +61,7 @@ const LoginScreen = () => {
               placeholder="Senha"
             />
           </div>
-
           {error && <p className="text-sm text-center text-red-600">{error}</p>}
-
-          {/* Botão de Entrar */}
           <div>
             <button
               type="submit"
